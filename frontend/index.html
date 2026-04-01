@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>RetinaScan — Diabetic Retinopathy Detection</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #080d14;
+    --surface:  #0f1923;
+    --border:   #1e2d3d;
+    --text:     #e2eaf4;
+    --muted:    #637a91;
+    --accent:   #38bdf8;
+    --accent2:  #818cf8;
+    --none:     #22c55e;
+    --mild:     #84cc16;
+    --moderate: #f59e0b;
+    --severe:   #ef4444;
+    --critical: #7c3aed;
+  }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Outfit', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Background grid ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 0;
+    background-image:
+      linear-gradient(rgba(56,189,248,.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(56,189,248,.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+  }
+
+  /* ── Glow blob ── */
+  body::after {
+    content: '';
+    position: fixed;
+    top: -200px; right: -200px;
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(56,189,248,.06) 0%, transparent 70%);
+    pointer-events: none; z-index: 0;
+  }
+
+  .wrap { position: relative; z-index: 1; max-width: 860px; margin: 0 auto; padding: 40px 24px 80px; }
+
+  /* ── Header ── */
+  header { text-align: center; margin-bottom: 56px; }
+
+  .logo {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500;
+    letter-spacing: .15em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 28px;
+  }
+  .logo-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 12px var(--accent);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50%      { opacity: .5; transform: scale(.7); }
+  }
+
+  h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(2rem, 5vw, 3.2rem);
+    font-weight: 400; line-height: 1.15;
+    background: linear-gradient(135deg, #e2eaf4 30%, var(--accent) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text; margin-bottom: 14px;
+  }
+
+  .subtitle {
+    color: var(--muted); font-size: .95rem; font-weight: 300; line-height: 1.6;
+    max-width: 500px; margin: 0 auto;
+  }
+
+  /* ── Upload card ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 40px;
+    margin-bottom: 28px;
+    transition: border-color .3s;
+  }
+
+  .drop-zone {
+    border: 1.5px dashed var(--border);
+    border-radius: 14px;
+    padding: 56px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all .25s;
+    position: relative;
+    background: rgba(255,255,255,.012);
+  }
+  .drop-zone:hover, .drop-zone.dragover {
+    border-color: var(--accent);
+    background: rgba(56,189,248,.04);
+  }
+
+  .drop-icon {
+    width: 64px; height: 64px; margin: 0 auto 20px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, rgba(56,189,248,.12), rgba(129,140,248,.08));
+    border: 1px solid rgba(56,189,248,.2);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .drop-icon svg { width: 28px; height: 28px; stroke: var(--accent); fill: none; stroke-width: 1.5; }
+
+  .drop-title { font-size: 1rem; font-weight: 500; margin-bottom: 6px; }
+  .drop-sub   { font-size: .83rem; color: var(--muted); }
+
+  #file-input { display: none; }
+
+  .btn-primary {
+    display: inline-flex; align-items: center; gap: 8px;
+    margin-top: 20px; padding: 11px 28px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #080d14; font-family: 'Outfit', sans-serif;
+    font-size: .9rem; font-weight: 600; border: none;
+    border-radius: 10px; cursor: pointer;
+    transition: opacity .2s, transform .15s;
+  }
+  .btn-primary:hover  { opacity: .88; transform: translateY(-1px); }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-primary:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+
+  /* ── Preview ── */
+  #preview-wrap { display: none; text-align: center; margin-top: 24px; }
+  #preview-img  {
+    max-height: 220px; border-radius: 12px;
+    border: 1px solid var(--border);
+    box-shadow: 0 0 40px rgba(56,189,248,.08);
+  }
+  #preview-name { font-family: 'DM Mono', monospace; font-size: .78rem; color: var(--muted); margin-top: 10px; }
+
+  /* ── Spinner ── */
+  .spinner-wrap { display: none; text-align: center; padding: 40px 0; }
+  .spinner {
+    width: 44px; height: 44px; margin: 0 auto 16px;
+    border: 2.5px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin .9s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner-label { font-size: .85rem; color: var(--muted); }
+
+  /* ── Result card ── */
+  #result-card { display: none; }
+
+  .result-header {
+    display: flex; align-items: center; gap: 16px;
+    margin-bottom: 28px; padding-bottom: 28px;
+    border-bottom: 1px solid var(--border);
+  }
+  .grade-badge {
+    width: 72px; height: 72px; flex-shrink: 0;
+    border-radius: 18px; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    font-family: 'DM Serif Display', serif;
+  }
+  .grade-badge .grade-num { font-size: 1.9rem; line-height: 1; }
+  .grade-badge .grade-tag { font-family: 'DM Mono', monospace; font-size: .6rem; letter-spacing: .1em; opacity: .75; margin-top: 2px; }
+
+  .result-label { flex: 1; }
+  .result-label h2 { font-size: 1.55rem; font-weight: 600; margin-bottom: 4px; }
+  .result-label .severity-chip {
+    display: inline-block; font-size: .75rem; font-weight: 500;
+    padding: 3px 10px; border-radius: 99px;
+    font-family: 'DM Mono', monospace; letter-spacing: .05em;
+  }
+
+  .confidence-row { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; }
+  .confidence-row label { font-size: .8rem; color: var(--muted); white-space: nowrap; width: 80px; }
+  .conf-bar-track {
+    flex: 1; height: 6px; border-radius: 99px;
+    background: var(--border); overflow: hidden;
+  }
+  .conf-bar-fill  { height: 100%; border-radius: 99px; transition: width .8s cubic-bezier(.16,1,.3,1); }
+  .conf-pct { font-family: 'DM Mono', monospace; font-size: .85rem; width: 48px; text-align: right; }
+
+  /* ── Probability grid ── */
+  .prob-grid { display: flex; flex-direction: column; gap: 10px; }
+  .prob-row  { display: grid; grid-template-columns: 130px 1fr 52px; align-items: center; gap: 12px; }
+  .prob-name { font-size: .82rem; color: var(--muted); }
+  .prob-track {
+    height: 5px; border-radius: 99px;
+    background: var(--border); overflow: hidden;
+  }
+  .prob-fill  { height: 100%; border-radius: 99px; transition: width .9s cubic-bezier(.16,1,.3,1); }
+  .prob-pct   { font-family: 'DM Mono', monospace; font-size: .8rem; text-align: right; }
+
+  /* ── Disclaimer ── */
+  .disclaimer {
+    margin-top: 28px; padding: 14px 18px;
+    background: rgba(239,68,68,.06); border: 1px solid rgba(239,68,68,.18);
+    border-radius: 10px; font-size: .78rem; color: #f87171; line-height: 1.6;
+  }
+
+  /* ── Footer ── */
+  footer {
+    text-align: center; margin-top: 60px;
+    font-family: 'DM Mono', monospace; font-size: .72rem;
+    color: var(--muted); letter-spacing: .05em;
+  }
+  footer span { color: var(--accent); }
+
+  /* ── Error state ── */
+  .error-msg {
+    display: none; padding: 14px 18px; border-radius: 10px;
+    background: rgba(239,68,68,.06); border: 1px solid rgba(239,68,68,.25);
+    color: #f87171; font-size: .85rem; margin-top: 16px;
+  }
+
+  @media (max-width: 560px) {
+    .card { padding: 24px; }
+    .prob-row { grid-template-columns: 110px 1fr 46px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Header -->
+  <header>
+    <div class="logo"><span class="logo-dot"></span> RetinaScan AI &nbsp;·&nbsp; MS Thesis</div>
+    <h1>Diabetic Retinopathy<br/>Detection</h1>
+    <p class="subtitle">Upload a retinal fundus photograph for automated DR grading using EfficientNetV2-S trained on APTOS 2019.</p>
+  </header>
+
+  <!-- Upload card -->
+  <div class="card">
+    <div class="drop-zone" id="drop-zone">
+      <div class="drop-icon">
+        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      </div>
+      <p class="drop-title">Drop your fundus image here</p>
+      <p class="drop-sub">or click to browse · JPEG / PNG · max 10 MB</p>
+      <button class="btn-primary" onclick="document.getElementById('file-input').click()" type="button">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Select Image
+      </button>
+      <input type="file" id="file-input" accept="image/jpeg,image/png,image/jpg"/>
+    </div>
+
+    <!-- Image preview -->
+    <div id="preview-wrap">
+      <img id="preview-img" src="" alt="Preview"/>
+      <p id="preview-name"></p>
+      <button class="btn-primary" id="analyze-btn" onclick="runPrediction()" style="margin-top:16px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        Analyze Image
+      </button>
+    </div>
+
+    <div class="error-msg" id="error-msg"></div>
+  </div>
+
+  <!-- Loading -->
+  <div class="spinner-wrap" id="spinner-wrap">
+    <div class="spinner"></div>
+    <p class="spinner-label">Running inference — please wait…</p>
+  </div>
+
+  <!-- Result -->
+  <div class="card" id="result-card">
+    <div class="result-header" id="result-header">
+      <div class="grade-badge" id="grade-badge">
+        <span class="grade-num" id="grade-num">—</span>
+        <span class="grade-tag">GRADE</span>
+      </div>
+      <div class="result-label">
+        <h2 id="result-label-text">—</h2>
+        <span class="severity-chip" id="severity-chip">—</span>
+      </div>
+    </div>
+
+    <div class="confidence-row">
+      <label>Confidence</label>
+      <div class="conf-bar-track"><div class="conf-bar-fill" id="conf-fill" style="width:0%"></div></div>
+      <span class="conf-pct" id="conf-pct">—</span>
+    </div>
+
+    <div class="prob-grid" id="prob-grid"></div>
+
+    <div class="disclaimer">
+      ⚠️ &nbsp;This tool is a <strong>research prototype</strong> developed as part of an MS Thesis.
+      Results are <strong>not a substitute for clinical diagnosis</strong>. Always consult a licensed ophthalmologist.
+    </div>
+  </div>
+
+  <footer>Built with EfficientNetV2-S &nbsp;·&nbsp; APTOS 2019 &nbsp;·&nbsp; <span>AWS Lambda</span> &nbsp;·&nbsp; MS Thesis 2025</footer>
+</div>
+
+<script>
+// ── CONFIG — injected by deploy.sh ───────────────────────────────────────────
+const API_URL = "https://a5gcloofzvahm2kwujuw6c3qzu0laxdv.lambda-url.us-east-1.on.aws/";   // e.g. https://xxx.lambda-url.us-east-1.on.aws/
+
+// ── DR metadata ──────────────────────────────────────────────────────────────
+const DR = {
+  "No DR":            { color: "#22c55e", bg: "rgba(34,197,94,.12)",   chip: "rgba(34,197,94,.18)"  },
+  "Mild DR":          { color: "#84cc16", bg: "rgba(132,204,22,.12)",  chip: "rgba(132,204,22,.18)" },
+  "Moderate DR":      { color: "#f59e0b", bg: "rgba(245,158,11,.12)",  chip: "rgba(245,158,11,.18)" },
+  "Severe DR":        { color: "#ef4444", bg: "rgba(239,68,68,.12)",   chip: "rgba(239,68,68,.18)"  },
+  "Proliferative DR": { color: "#a855f7", bg: "rgba(168,85,247,.12)",  chip: "rgba(168,85,247,.18)" },
+};
+
+let selectedFile = null;
+
+// ── Drag and drop ─────────────────────────────────────────────────────────────
+const dropZone = document.getElementById("drop-zone");
+dropZone.addEventListener("dragover",  e => { e.preventDefault(); dropZone.classList.add("dragover"); });
+dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragover"));
+dropZone.addEventListener("drop", e => {
+  e.preventDefault(); dropZone.classList.remove("dragover");
+  const f = e.dataTransfer.files[0];
+  if (f) handleFile(f);
+});
+
+document.getElementById("file-input").addEventListener("change", e => {
+  if (e.target.files[0]) handleFile(e.target.files[0]);
+});
+
+function handleFile(file) {
+  if (!file.type.startsWith("image/")) return showError("Please select a JPEG or PNG image.");
+  if (file.size > 10 * 1024 * 1024)   return showError("File exceeds 10 MB limit.");
+  selectedFile = file;
+  clearError();
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById("preview-img").src = e.target.result;
+    document.getElementById("preview-name").textContent = file.name + " · " + (file.size / 1024).toFixed(1) + " KB";
+    document.getElementById("preview-wrap").style.display = "block";
+  };
+  reader.readAsDataURL(file);
+  document.getElementById("result-card").style.display = "none";
+}
+
+async function runPrediction() {
+  if (!selectedFile) return;
+
+  document.getElementById("analyze-btn").disabled = true;
+  document.getElementById("spinner-wrap").style.display = "block";
+  document.getElementById("result-card").style.display  = "none";
+  clearError();
+
+  const form = new FormData();
+  form.append("file", selectedFile);
+
+  try {
+    const res = await fetch(API_URL + "predict", { method: "POST", body: form });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || "Server error " + res.status);
+    }
+    const data = await res.json();
+    renderResult(data);
+  } catch (err) {
+    showError("Prediction failed: " + err.message);
+  } finally {
+    document.getElementById("spinner-wrap").style.display = "none";
+    document.getElementById("analyze-btn").disabled = false;
+  }
+}
+
+function renderResult(data) {
+  const meta = DR[data.label] || { color: "#38bdf8", bg: "rgba(56,189,248,.12)", chip: "rgba(56,189,248,.18)" };
+
+  // Badge
+  const badge = document.getElementById("grade-badge");
+  badge.style.background = meta.bg;
+  badge.style.border      = "1px solid " + meta.color + "40";
+  badge.style.color       = meta.color;
+  document.getElementById("grade-num").textContent = data.grade;
+
+  // Label & chip
+  document.getElementById("result-label-text").textContent = data.label;
+  const chip = document.getElementById("severity-chip");
+  chip.textContent   = data.severity;
+  chip.style.background = meta.chip;
+  chip.style.color      = meta.color;
+
+  // Confidence bar
+  const fill = document.getElementById("conf-fill");
+  fill.style.background = meta.color;
+  setTimeout(() => fill.style.width = data.confidence + "%", 50);
+  document.getElementById("conf-pct").textContent = data.confidence.toFixed(1) + "%";
+
+  // Probability rows
+  const grid = document.getElementById("prob-grid");
+  grid.innerHTML = "";
+  Object.entries(data.all_probs).forEach(([label, pct]) => {
+    const c = (DR[label] || {}).color || "#38bdf8";
+    const row = document.createElement("div");
+    row.className = "prob-row";
+    row.innerHTML = `
+      <span class="prob-name">${label}</span>
+      <div class="prob-track"><div class="prob-fill" style="background:${c};width:0%" data-w="${pct}"></div></div>
+      <span class="prob-pct">${pct.toFixed(1)}%</span>`;
+    grid.appendChild(row);
+  });
+  setTimeout(() => {
+    grid.querySelectorAll(".prob-fill").forEach(el => el.style.width = el.dataset.w + "%");
+  }, 80);
+
+  document.getElementById("result-card").style.display = "block";
+}
+
+function showError(msg) {
+  const el = document.getElementById("error-msg");
+  el.textContent = msg; el.style.display = "block";
+}
+function clearError() {
+  document.getElementById("error-msg").style.display = "none";
+}
+</script>
+</body>
+</html>
