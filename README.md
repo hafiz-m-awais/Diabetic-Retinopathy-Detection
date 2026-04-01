@@ -14,13 +14,6 @@ Developed as part of an MS Thesis and published in IEEE Access (2025).
 
 ---
 
-## 📖 Publication
-**Improving Inference Time in Diabetic Retinopathy - Recent Trends and Future Directions**  
-*IEEE Access, 2025*  
-[DOI: 10.1109/ACCESS.2025.3607992](https://ieeexplore.ieee.org/document/11153952/)
-
----
-
 ## ✨ Features
 * **State-of-the-Art Model:** EfficientNetV2-S trained on the **APTOS 2019 dataset** for 5-class severity grading.  
 * **Serverless Ready:** Designed for AWS Lambda with Docker containers.  
