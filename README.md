@@ -1,10 +1,10 @@
 # 🩺 RetinaScan: Diabetic Retinopathy Detection System
 
-![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)  
-![PyTorch](https://img.shields.io/badge/PyTorch-EE4C2C?style=flat&logo=pytorch&logoColor=white)  
-![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=flat&logo=fastapi)  
-![AWS](https://img.shields.io/badge/AWS-Lambda%20%7C%20ECR%20%7C%20S3-FF9900?style=flat&logo=amazon-aws&logoColor=white)  
-![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat&logo=docker&logoColor=white)  
+![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)
+![PyTorch](https://img.shields.io/badge/PyTorch-EE4C2C?style=flat&logo=pytorch&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=flat&logo=fastapi)
+![AWS](https://img.shields.io/badge/AWS-Lambda%20%7C%20ECR%20%7C%20S3-FF9900?style=flat&logo=amazon-aws&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat&logo=docker&logoColor=white)
 
 **RetinaScan** is an end-to-end machine learning system designed to automate **Diabetic Retinopathy (DR) grading** using an **EfficientNetV2-S** model. The backend is built with **FastAPI**, containerized via **Docker**, and designed for serverless deployment on **AWS Lambda** with a responsive frontend hosted on **AWS S3**.  
 
