@@ -1,4 +1,4 @@
-# 🩺 RetinaScan: Diabetic Retinopathy Detection System
+# 🩺 Diabetic Retinopathy Detection System
 
 ![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)
 ![PyTorch](https://img.shields.io/badge/PyTorch-EE4C2C?style=flat&logo=pytorch&logoColor=white)
